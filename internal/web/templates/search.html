@@ -1,0 +1,41 @@
+{{define "content"}}
+<h1>Full-Text Search</h1>
+<form id="search-form">
+  <input type="text" id="q" placeholder="search products…" autofocus>
+  <select id="mode">
+    <option value="exact">exact (tsvector rank)</option>
+    <option value="fuzzy">fuzzy (trigram)</option>
+  </select>
+  <button type="submit">Search</button>
+</form>
+<div id="results"></div>
+
+<script>
+const form = document.getElementById('search-form');
+const results = document.getElementById('results');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim();
+  const mode = document.getElementById('mode').value;
+  if (!q) return;
+  results.innerHTML = 'Loading…';
+  try {
+    const path = mode === 'fuzzy' ? '/api/search/fuzzy' : '/api/search';
+    const hits = await fetchJSON(`${path}?q=${encodeURIComponent(q)}`);
+    if (!hits.length) {
+      results.innerHTML = '<p>No results.</p>';
+      return;
+    }
+    results.innerHTML = hits.map(h => `
+      <div class="result">
+        <strong>${h.headline || h.name}</strong> — $${h.price}
+        <div class="score">${h.rank ? 'rank ' + h.rank.toFixed(4) : 'similarity ' + h.similarity.toFixed(3)}</div>
+      </div>
+    `).join('');
+  } catch (err) {
+    results.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+});
+</script>
+{{end}}

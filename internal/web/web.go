@@ -1,0 +1,56 @@
+// Package web renders the html/template frontend shell shared by all cases.
+package web
+
+import (
+	"embed"
+	"encoding/json"
+	"html/template"
+	"net/http"
+)
+
+//go:embed templates/*.html
+var templatesFS embed.FS
+
+//go:embed static
+var StaticFS embed.FS
+
+// Case describes one learning case for the index page and nav.
+type Case struct {
+	Slug  string
+	Title string
+	Desc  string
+}
+
+// Cases lists every case page, appended to as each case is implemented.
+var Cases = []Case{
+	{Slug: "search", Title: "Full-Text Search", Desc: "tsvector ranking, trigram fuzzy match, autocomplete"},
+}
+
+// RenderPage renders templates/<name>.html inside the shared layout.
+func RenderPage(w http.ResponseWriter, name string, data any) {
+	tmpl, err := template.ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// IndexHandler renders the case list at "/".
+func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	RenderPage(w, "index", Cases)
+}
+
+// JSON writes data as a JSON response body.
+func JSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+// Error writes a JSON {"error": msg} response.
+func Error(w http.ResponseWriter, status int, msg string) {
+	JSON(w, status, map[string]string{"error": msg})
+}
