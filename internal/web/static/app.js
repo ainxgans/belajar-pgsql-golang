@@ -5,3 +5,14 @@ async function fetchJSON(url) {
   if (!res.ok) throw new Error(body.error || res.statusText);
   return body;
 }
+
+async function postJSON(url, data) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+}

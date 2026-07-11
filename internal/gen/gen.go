@@ -7,10 +7,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// dateSpread returns a random timestamp uniformly within the last spreadMonths
+// months, anchored to now — matching the partition range built by 0004_orders.sql.
+func dateSpread(rnd *rand.Rand, spreadMonths int) time.Time {
+	hours := int64(spreadMonths) * 30 * 24
+	return time.Now().Add(-time.Duration(rnd.Int63n(hours)) * time.Hour)
+}
 
 const batchSize = 50_000
 
@@ -21,6 +29,9 @@ const (
 	TableSellers    = "sellers"
 	TableProducts   = "products"
 	TableReviews    = "reviews"
+	TableOrders     = "orders"
+	TableOrderItems = "order_items"
+	TableEvents     = "events"
 )
 
 // Generate creates `rows` rows of `table` using rnd for randomness, optionally
@@ -43,6 +54,12 @@ func Generate(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, table str
 		return genProducts(ctx, pool, rnd, rows)
 	case TableReviews:
 		return genReviews(ctx, pool, rnd, rows)
+	case TableOrders:
+		return genOrders(ctx, pool, rnd, rows)
+	case TableOrderItems:
+		return genOrderItems(ctx, pool, rnd, rows)
+	case TableEvents:
+		return genEvents(ctx, pool, rnd, rows)
 	default:
 		return fmt.Errorf("gen: unknown table %q", table)
 	}
@@ -152,6 +169,82 @@ func genReviews(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows in
 		productID := rnd.Int63n(productCount) + 1
 		userID := rnd.Int63n(userCount) + 1
 		return []any{productID, userID, body, rating}
+	})
+}
+
+func genOrders(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
+	userCount, err := tableCount(ctx, pool, TableUsers)
+	if err != nil {
+		return err
+	}
+	if userCount == 0 {
+		return fmt.Errorf("gen: orders needs users generated first")
+	}
+
+	return copyBatches(ctx, pool, TableOrders, []string{"user_id", "status", "total", "created_at"}, rows, func(i int) []any {
+		userID := rnd.Int63n(userCount) + 1
+		status := orderStatuses[rnd.Intn(len(orderStatuses))]
+		total := float64(rnd.Intn(500_00)+5_00) / 100.0
+		createdAt := dateSpread(rnd, 24) // stays within the 24-months-back partition range
+		return []any{userID, status, total, createdAt}
+	})
+}
+
+func genOrderItems(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
+	orderCount, err := tableCount(ctx, pool, TableOrders)
+	if err != nil {
+		return err
+	}
+	productCount, err := tableCount(ctx, pool, TableProducts)
+	if err != nil {
+		return err
+	}
+	if orderCount == 0 || productCount == 0 {
+		return fmt.Errorf("gen: order_items needs orders and products generated first")
+	}
+
+	return copyBatches(ctx, pool, TableOrderItems, []string{"order_id", "product_id", "qty", "price"}, rows, func(i int) []any {
+		orderID := rnd.Int63n(orderCount) + 1
+		productID := rnd.Int63n(productCount) + 1
+		qty := rnd.Intn(5) + 1
+		price := float64(rnd.Intn(200_00)+1_00) / 100.0
+		return []any{orderID, productID, qty, price}
+	})
+}
+
+func genEvents(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
+	userCount, err := tableCount(ctx, pool, TableUsers)
+	if err != nil {
+		return err
+	}
+	productCount, err := tableCount(ctx, pool, TableProducts)
+	if err != nil {
+		return err
+	}
+	if userCount == 0 || productCount == 0 {
+		return fmt.Errorf("gen: events needs users and products generated first")
+	}
+
+	return copyBatches(ctx, pool, TableEvents, []string{"user_id", "product_id", "kind", "created_at"}, rows, func(i int) []any {
+		userID := rnd.Int63n(userCount) + 1
+
+		var kind string
+		switch roll := rnd.Intn(10); {
+		case roll <= 5:
+			kind = eventKinds[0] // view
+		case roll <= 8:
+			kind = eventKinds[1] // cart
+		default:
+			kind = eventKinds[2] // purchase
+		}
+
+		var productID any
+		if rnd.Intn(10) != 0 {
+			productID = rnd.Int63n(productCount) + 1
+		}
+
+		createdAt := dateSpread(rnd, 26)
+		return []any{userID, productID, kind, createdAt}
 	})
 }
 
