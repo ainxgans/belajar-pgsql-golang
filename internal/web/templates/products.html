@@ -1,0 +1,64 @@
+{{define "content"}}
+<h1>JSONB Atribut Dinamis</h1>
+<form id="filter-form">
+  <input type="text" id="brand" placeholder="brand">
+  <input type="text" id="color" placeholder="color">
+  <input type="number" id="min_price" placeholder="min price" step="0.01">
+  <input type="number" id="max_price" placeholder="max price" step="0.01">
+  <input type="number" id="category_id" placeholder="category id (for facets)">
+  <button type="submit">Filter</button>
+</form>
+<div style="display:flex; gap:2rem;">
+  <div id="results" style="flex:2;"></div>
+  <div id="facets" style="flex:1;"></div>
+</div>
+
+<script>
+const form = document.getElementById('filter-form');
+const results = document.getElementById('results');
+const facetsEl = document.getElementById('facets');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const brand = document.getElementById('brand').value.trim();
+  const color = document.getElementById('color').value.trim();
+  const minPrice = document.getElementById('min_price').value;
+  const maxPrice = document.getElementById('max_price').value;
+  const categoryId = document.getElementById('category_id').value;
+
+  const params = new URLSearchParams();
+  if (brand) params.set('attr.brand', brand);
+  if (color) params.set('attr.color', color);
+  if (minPrice) params.set('min_price', minPrice);
+  if (maxPrice) params.set('max_price', maxPrice);
+
+  results.innerHTML = 'Loading…';
+  try {
+    const products = await fetchJSON(`/api/products?${params.toString()}`);
+    results.innerHTML = products.length
+      ? products.map(p => `
+          <div class="result">
+            <strong>${p.name}</strong> — $${p.price}
+            <div class="score">${JSON.stringify(p.attributes)}</div>
+          </div>
+        `).join('')
+      : '<p>No results.</p>';
+  } catch (err) {
+    results.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+
+  facetsEl.innerHTML = '';
+  if (categoryId) {
+    try {
+      const facetData = await fetchJSON(`/api/products/facets?category_id=${encodeURIComponent(categoryId)}`);
+      facetsEl.innerHTML = Object.entries(facetData).map(([key, values]) => `
+        <h3>${key}</h3>
+        <ul>${values.map(v => `<li>${v.value}: ${v.count}</li>`).join('')}</ul>
+      `).join('') || '<p>No facets.</p>';
+    } catch (err) {
+      facetsEl.innerHTML = `<p class="error">${err.message}</p>`;
+    }
+  }
+});
+</script>
+{{end}}

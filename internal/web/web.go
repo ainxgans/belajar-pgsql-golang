@@ -24,6 +24,7 @@ type Case struct {
 // Cases lists every case page, appended to as each case is implemented.
 var Cases = []Case{
 	{Slug: "search", Title: "Full-Text Search", Desc: "tsvector ranking, trigram fuzzy match, autocomplete"},
+	{Slug: "products", Title: "JSONB Atribut Dinamis", Desc: "filter atribut dinamis via containment (@>), facet count, generated column"},
 }
 
 // RenderPage renders templates/<name>.html inside the shared layout.

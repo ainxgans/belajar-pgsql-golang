@@ -27,6 +27,14 @@ var (
 		"exceeded my expectations", "would not recommend", "fast shipping", "good value",
 		"battery life is poor", "exactly what I needed", "customer service was helpful",
 	}
+	brands = []string{
+		"Northline", "Vertex", "Aurora", "Boreal", "Cinderwood", "Fenwick",
+		"Halcyon", "Ironclad", "Meridian", "Solace",
+	}
+	colors = []string{
+		"Black", "White", "Navy", "Red", "Olive", "Sand", "Charcoal", "Sky Blue",
+	}
+	sizes = []string{"S", "M", "L", "XL"}
 )
 
 // cityCoords gives each city a rough lat/lng so sellers cluster geographically.

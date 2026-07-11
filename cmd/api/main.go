@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"pgsql-playground/internal/cases/fts"
+	"pgsql-playground/internal/cases/jsonb"
 	"pgsql-playground/internal/db"
 	"pgsql-playground/internal/web"
 )
@@ -36,6 +37,7 @@ func main() {
 	mux.HandleFunc("GET /{$}", web.IndexHandler)
 
 	fts.RegisterRoutes(mux, pool)
+	jsonb.RegisterRoutes(mux, pool)
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {
