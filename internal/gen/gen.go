@@ -4,6 +4,7 @@ package gen
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 
@@ -102,8 +103,11 @@ func genProducts(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows i
 		return fmt.Errorf("gen: products needs sellers and categories generated first")
 	}
 
+	ramOptions := []int{4, 8, 16, 32}
+	storageOptions := []int{128, 256, 512, 1024}
+
 	return copyBatches(ctx, pool, TableProducts,
-		[]string{"seller_id", "category_id", "name", "description", "price"}, rows, func(i int) []any {
+		[]string{"seller_id", "category_id", "name", "description", "price", "attributes"}, rows, func(i int) []any {
 			adj := adjectives[rnd.Intn(len(adjectives))]
 			noun := nouns[rnd.Intn(len(nouns))]
 			desc := descriptors[rnd.Intn(len(descriptors))]
@@ -112,7 +116,18 @@ func genProducts(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows i
 			price := float64(rnd.Intn(200_00)+1_00) / 100.0
 			sellerID := rnd.Int63n(sellerCount) + 1
 			categoryID := rnd.Int63n(categoryCount) + 1
-			return []any{sellerID, categoryID, name, description, price}
+
+			attrs := map[string]any{"brand": brands[rnd.Intn(len(brands))]}
+			if categoryID%2 == 0 {
+				attrs["color"] = colors[rnd.Intn(len(colors))]
+				attrs["size"] = sizes[rnd.Intn(len(sizes))]
+			} else {
+				attrs["ram_gb"] = ramOptions[rnd.Intn(len(ramOptions))]
+				attrs["storage_gb"] = storageOptions[rnd.Intn(len(storageOptions))]
+			}
+			attrsJSON, _ := json.Marshal(attrs) // map of string/int only, cannot fail
+
+			return []any{sellerID, categoryID, name, description, price, attrsJSON}
 		})
 }
 
