@@ -1,0 +1,25 @@
+{{define "content"}}
+<h1>Partisi & EXPLAIN Playground</h1>
+<form id="explain-form">
+  <textarea id="sql" rows="4" style="width:100%; font-family: monospace;">SELECT * FROM orders WHERE created_at >= date_trunc('month', now()) AND created_at < date_trunc('month', now()) + interval '1 month'</textarea>
+  <button type="submit">Run EXPLAIN ANALYZE</button>
+</form>
+<pre id="plan" style="white-space: pre-wrap; background:#f6f6f6; padding:1rem; border-radius:6px;"></pre>
+
+<script>
+const form = document.getElementById('explain-form');
+const plan = document.getElementById('plan');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const sql = document.getElementById('sql').value;
+  plan.textContent = 'Running…';
+  try {
+    const result = await postJSON('/api/explain', { sql });
+    plan.textContent = JSON.stringify(result, null, 2);
+  } catch (err) {
+    plan.textContent = 'Error: ' + err.message;
+  }
+});
+</script>
+{{end}}

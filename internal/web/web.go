@@ -25,6 +25,7 @@ type Case struct {
 var Cases = []Case{
 	{Slug: "search", Title: "Full-Text Search", Desc: "tsvector ranking, trigram fuzzy match, autocomplete"},
 	{Slug: "products", Title: "JSONB Atribut Dinamis", Desc: "filter atribut dinamis via containment (@>), facet count, generated column"},
+	{Slug: "explain", Title: "Partisi & EXPLAIN Playground", Desc: "orders dipartisi per bulan, BRIN vs BTREE, jalankan EXPLAIN ANALYZE dari browser"},
 }
 
 // RenderPage renders templates/<name>.html inside the shared layout.

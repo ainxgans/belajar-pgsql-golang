@@ -34,7 +34,9 @@ var (
 	colors = []string{
 		"Black", "White", "Navy", "Red", "Olive", "Sand", "Charcoal", "Sky Blue",
 	}
-	sizes = []string{"S", "M", "L", "XL"}
+	sizes         = []string{"S", "M", "L", "XL"}
+	orderStatuses = []string{"pending", "paid", "shipped", "delivered", "cancelled"}
+	eventKinds    = []string{"view", "cart", "purchase"}
 )
 
 // cityCoords gives each city a rough lat/lng so sellers cluster geographically.
