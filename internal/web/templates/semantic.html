@@ -1,0 +1,44 @@
+{{define "content"}}
+<h1>Semantic Similarity (pgvector)</h1>
+<form id="search-form">
+  <select id="product_id"></select>
+  <input type="number" id="limit" value="10" min="1" placeholder="limit">
+  <button type="submit">Find similar</button>
+</form>
+<div id="results"></div>
+
+<script>
+const select = document.getElementById('product_id');
+const results = document.getElementById('results');
+
+(async () => {
+  try {
+    const products = await fetchJSON('/api/products/list');
+    select.innerHTML = products.map(p => `<option value="${p.id}">${p.name} (id ${p.id})</option>`).join('');
+  } catch (err) {
+    select.innerHTML = '<option>failed to load products</option>';
+  }
+})();
+
+document.getElementById('search-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const productId = select.value;
+  const limit = document.getElementById('limit').value || 10;
+
+  results.innerHTML = 'Loading…';
+  try {
+    const similar = await fetchJSON(`/api/search/semantic?product_id=${encodeURIComponent(productId)}&limit=${encodeURIComponent(limit)}`);
+    results.innerHTML = similar.length
+      ? `<table>
+          <thead><tr><th>id</th><th>name</th><th>dist</th></tr></thead>
+          <tbody>${similar.map(p => `
+            <tr><td>${p.id}</td><td>${p.name}</td><td>${p.dist.toFixed(4)}</td></tr>
+          `).join('')}</tbody>
+        </table>`
+      : '<p>No results.</p>';
+  } catch (err) {
+    results.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+});
+</script>
+{{end}}

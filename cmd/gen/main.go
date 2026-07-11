@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	table := flag.String("table", "", "table to generate: users|categories|sellers|products|reviews")
+	table := flag.String("table", "", "table to generate: users|categories|sellers|products|reviews|orders|order_items|events|embeddings")
 	rows := flag.Int("rows", 1000, "number of rows to generate")
 	seed := flag.Int64("seed", 1, "random seed (same seed = same data)")
 	truncate := flag.Bool("truncate", false, "truncate the table before generating")

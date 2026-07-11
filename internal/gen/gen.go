@@ -6,7 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -32,6 +34,7 @@ const (
 	TableOrders     = "orders"
 	TableOrderItems = "order_items"
 	TableEvents     = "events"
+	TableEmbeddings = "embeddings"
 )
 
 // Generate creates `rows` rows of `table` using rnd for randomness, optionally
@@ -60,6 +63,8 @@ func Generate(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, table str
 		return genOrderItems(ctx, pool, rnd, rows)
 	case TableEvents:
 		return genEvents(ctx, pool, rnd, rows)
+	case TableEmbeddings:
+		return genEmbeddings(ctx, pool, rnd) // backfills an existing column; rows/truncate are ignored
 	default:
 		return fmt.Errorf("gen: unknown table %q", table)
 	}
@@ -246,6 +251,103 @@ func genEvents(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int
 		createdAt := dateSpread(rnd, 26)
 		return []any{userID, productID, kind, createdAt}
 	})
+}
+
+const embeddingDim = 128
+
+// normalize L2-normalizes v in place.
+func normalize(v []float64) {
+	var sumSq float64
+	for _, x := range v {
+		sumSq += x * x
+	}
+	norm := math.Sqrt(sumSq)
+	if norm == 0 {
+		return
+	}
+	for i := range v {
+		v[i] /= norm
+	}
+}
+
+// vectorLiteral formats v as a pgvector text literal, e.g. "[0.1,0.2,...]".
+func vectorLiteral(v []float64) string {
+	parts := make([]string, len(v))
+	for i, x := range v {
+		parts[i] = fmt.Sprintf("%.6f", x)
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+// genEmbeddings backfills products.embedding: each category gets a random
+// L2-normalized centroid, and each product's embedding is its category's
+// centroid plus small gaussian noise, re-normalized. This clusters products
+// by category in vector space so cosine similarity search returns
+// same-category "similar products" without a real embedding model.
+func genEmbeddings(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand) error {
+	catRows, err := pool.Query(ctx, "SELECT id FROM categories")
+	if err != nil {
+		return fmt.Errorf("gen: embeddings: select categories: %w", err)
+	}
+	centroids := map[int64][]float64{}
+	for catRows.Next() {
+		var id int64
+		if err := catRows.Scan(&id); err != nil {
+			catRows.Close()
+			return fmt.Errorf("gen: embeddings: scan category: %w", err)
+		}
+		centroid := make([]float64, embeddingDim)
+		for i := range centroid {
+			centroid[i] = rnd.NormFloat64()
+		}
+		normalize(centroid)
+		centroids[id] = centroid
+	}
+	catRows.Close()
+	if err := catRows.Err(); err != nil {
+		return fmt.Errorf("gen: embeddings: categories: %w", err)
+	}
+
+	prodRows, err := pool.Query(ctx, "SELECT id, category_id FROM products")
+	if err != nil {
+		return fmt.Errorf("gen: embeddings: select products: %w", err)
+	}
+	type product struct {
+		id, categoryID int64
+	}
+	var products []product
+	for prodRows.Next() {
+		var p product
+		if err := prodRows.Scan(&p.id, &p.categoryID); err != nil {
+			prodRows.Close()
+			return fmt.Errorf("gen: embeddings: scan product: %w", err)
+		}
+		products = append(products, p)
+	}
+	prodRows.Close()
+	if err := prodRows.Err(); err != nil {
+		return fmt.Errorf("gen: embeddings: products: %w", err)
+	}
+
+	batch := &pgx.Batch{}
+	for _, p := range products {
+		centroid := centroids[p.categoryID]
+		emb := make([]float64, embeddingDim)
+		for i := range emb {
+			emb[i] = centroid[i] + rnd.NormFloat64()*0.15
+		}
+		normalize(emb)
+		batch.Queue("UPDATE products SET embedding = $1::vector WHERE id = $2", vectorLiteral(emb), p.id)
+	}
+	br := pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for range products {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("gen: embeddings: update: %w", err)
+		}
+	}
+	fmt.Printf("gen: embeddings +%d products\n", len(products))
+	return nil
 }
 
 func tableCount(ctx context.Context, pool *pgxpool.Pool, table string) (int64, error) {

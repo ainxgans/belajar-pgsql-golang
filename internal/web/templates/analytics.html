@@ -1,0 +1,220 @@
+{{define "content"}}
+<h1>Analitik &amp; Window Functions</h1>
+
+<div class="tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+  <button type="button" class="tab-btn" data-tab="revenue">Revenue</button>
+  <button type="button" class="tab-btn" data-tab="top-products">Top Products</button>
+  <button type="button" class="tab-btn" data-tab="funnel">Funnel</button>
+  <button type="button" class="tab-btn" data-tab="rfm">RFM</button>
+  <button type="button" class="tab-btn" data-tab="summary">Summary</button>
+</div>
+
+<section id="tab-revenue" class="tab-panel">
+  <form id="revenue-form">
+    <input type="date" id="revenue-from" name="from">
+    <input type="date" id="revenue-to" name="to">
+    <select id="revenue-bucket" name="bucket">
+      <option value="day">day</option>
+      <option value="week">week</option>
+      <option value="month">month</option>
+    </select>
+    <button type="submit">Load</button>
+  </form>
+  <canvas id="revenue-chart" width="640" height="160" style="border:1px solid #ddd; border-radius:6px; margin:0.5rem 0;"></canvas>
+  <div id="revenue-results"></div>
+</section>
+
+<section id="tab-top-products" class="tab-panel" style="display:none;">
+  <form id="top-products-form">
+    <select id="top-products-by" name="by">
+      <option value="revenue">revenue</option>
+      <option value="qty">qty</option>
+    </select>
+    <button type="submit">Load</button>
+  </form>
+  <div id="top-products-results"></div>
+</section>
+
+<section id="tab-funnel" class="tab-panel" style="display:none;">
+  <button type="button" id="funnel-load">Load</button>
+  <div id="funnel-results"></div>
+</section>
+
+<section id="tab-rfm" class="tab-panel" style="display:none;">
+  <button type="button" id="rfm-load">Load</button>
+  <div id="rfm-results"></div>
+</section>
+
+<section id="tab-summary" class="tab-panel" style="display:none;">
+  <button type="button" id="summary-load">Load</button>
+  <div id="summary-results"></div>
+</section>
+
+<script>
+// --- tab switching (plain show/hide, no router) ---
+const tabBtns = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.tab-panel');
+const loaders = {
+  'funnel': () => loadFunnel(),
+  'rfm': () => loadRfm(),
+  'summary': () => loadSummary(),
+};
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    panels.forEach(p => p.style.display = (p.id === 'tab-' + btn.dataset.tab) ? '' : 'none');
+    if (loaders[btn.dataset.tab]) loaders[btn.dataset.tab]();
+  });
+});
+
+function escapeHtml(s) {
+  return String(s ?? '-').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function renderTable(rows, columns) {
+  // columns: [{key, label}]
+  if (!rows || !rows.length) return '<p>No data.</p>';
+  const head = columns.map(c => `<th>${c.label}</th>`).join('');
+  const body = rows.map(r => `<tr>${columns.map(c => `<td>${escapeHtml(r[c.key])}</td>`).join('')}</tr>`).join('');
+  return `<table style="width:100%; border-collapse:collapse;">
+    <thead><tr>${head}</tr></thead>
+    <tbody>${body}</tbody>
+  </table>`;
+}
+
+// --- Revenue ---
+const revenueForm = document.getElementById('revenue-form');
+const revenueResults = document.getElementById('revenue-results');
+const revenueChart = document.getElementById('revenue-chart');
+
+revenueForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const from = document.getElementById('revenue-from').value;
+  const to = document.getElementById('revenue-to').value;
+  const bucket = document.getElementById('revenue-bucket').value;
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  if (bucket) params.set('bucket', bucket);
+
+  revenueResults.innerHTML = 'Loading…';
+  try {
+    const rows = await fetchJSON(`/api/analytics/revenue?${params.toString()}`);
+    revenueResults.innerHTML = renderTable(rows, [
+      { key: 'bucket', label: 'Bucket' },
+      { key: 'orders', label: 'Orders' },
+      { key: 'revenue', label: 'Revenue' },
+      { key: 'running_revenue', label: 'Running Revenue' },
+    ]);
+    drawBarChart(revenueChart, rows, 'revenue');
+  } catch (err) {
+    revenueResults.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+});
+
+function drawBarChart(canvas, rows, key) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!rows || !rows.length) return;
+  const values = rows.map(r => Number(r[key]) || 0);
+  const max = Math.max(...values, 1);
+  const barW = canvas.width / rows.length;
+  ctx.fillStyle = '#4a90d9';
+  values.forEach((v, i) => {
+    const h = (v / max) * (canvas.height - 10);
+    ctx.fillRect(i * barW + 2, canvas.height - h, barW - 4, h);
+  });
+}
+
+// --- Top Products ---
+const topProductsForm = document.getElementById('top-products-form');
+const topProductsResults = document.getElementById('top-products-results');
+
+topProductsForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const by = document.getElementById('top-products-by').value;
+  const params = new URLSearchParams({ by, per: 'category' });
+
+  topProductsResults.innerHTML = 'Loading…';
+  try {
+    const rows = await fetchJSON(`/api/analytics/top-products?${params.toString()}`);
+    topProductsResults.innerHTML = renderTable(rows, [
+      { key: 'category_name', label: 'Category' },
+      { key: 'rank', label: 'Rank' },
+      { key: 'product_name', label: 'Product' },
+      { key: 'metric_value', label: 'Value' },
+    ]);
+  } catch (err) {
+    topProductsResults.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+});
+
+// --- Funnel ---
+const funnelResults = document.getElementById('funnel-results');
+document.getElementById('funnel-load').addEventListener('click', loadFunnel);
+
+async function loadFunnel() {
+  funnelResults.innerHTML = 'Loading…';
+  try {
+    const data = await fetchJSON('/api/analytics/funnel');
+    const stats = [
+      { label: 'Views', value: data.views },
+      { label: 'Carts', value: data.carts },
+      { label: 'Purchases', value: data.purchases },
+    ];
+    funnelResults.innerHTML = `<div style="display:flex; gap:1rem;">${stats.map(s => `
+      <div class="result" style="flex:1; text-align:center;">
+        <div class="score">${s.label}</div>
+        <strong style="font-size:1.5em;">${escapeHtml(s.value)}</strong>
+      </div>
+    `).join('')}</div>`;
+  } catch (err) {
+    funnelResults.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+// --- RFM ---
+const rfmResults = document.getElementById('rfm-results');
+document.getElementById('rfm-load').addEventListener('click', loadRfm);
+
+async function loadRfm() {
+  rfmResults.innerHTML = 'Loading…';
+  try {
+    let rows = await fetchJSON('/api/analytics/rfm');
+    if (Array.isArray(rows) && rows.length > 100) rows = rows.slice(0, 100); // ponytail: defensive cap, cheap client-side truncation
+    rfmResults.innerHTML = renderTable(rows, [
+      { key: 'user_id', label: 'User' },
+      { key: 'recency_days', label: 'Recency (days)' },
+      { key: 'frequency', label: 'Frequency' },
+      { key: 'monetary', label: 'Monetary' },
+      { key: 'recency_score', label: 'R Score' },
+      { key: 'frequency_score', label: 'F Score' },
+      { key: 'monetary_score', label: 'M Score' },
+    ]);
+  } catch (err) {
+    rfmResults.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+// --- Summary ---
+const summaryResults = document.getElementById('summary-results');
+document.getElementById('summary-load').addEventListener('click', loadSummary);
+
+async function loadSummary() {
+  summaryResults.innerHTML = 'Loading…';
+  try {
+    const rows = await fetchJSON('/api/analytics/summary');
+    const mapped = (rows || []).map(r => ({ ...r, status: r.status ?? 'TOTAL' }));
+    summaryResults.innerHTML = renderTable(mapped, [
+      { key: 'status', label: 'Status' },
+      { key: 'orders', label: 'Orders' },
+      { key: 'revenue', label: 'Revenue' },
+    ]);
+  } catch (err) {
+    summaryResults.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+// show first tab by default
+document.querySelector('.tab-btn[data-tab="revenue"]').classList.add('active');
+</script>
+{{end}}

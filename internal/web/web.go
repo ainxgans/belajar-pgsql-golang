@@ -26,6 +26,10 @@ var Cases = []Case{
 	{Slug: "search", Title: "Full-Text Search", Desc: "tsvector ranking, trigram fuzzy match, autocomplete"},
 	{Slug: "products", Title: "JSONB Atribut Dinamis", Desc: "filter atribut dinamis via containment (@>), facet count, generated column"},
 	{Slug: "explain", Title: "Partisi & EXPLAIN Playground", Desc: "orders dipartisi per bulan, BRIN vs BTREE, jalankan EXPLAIN ANALYZE dari browser"},
+	{Slug: "analytics", Title: "Analitik & Window Functions", Desc: "revenue time-series, top products per kategori, funnel, RFM, ringkasan GROUPING SETS"},
+	{Slug: "nearby", Title: "Geospasial (earthdistance)", Desc: "cari seller terdekat dari koordinat via cube/earthdistance, GiST index"},
+	{Slug: "realtime", Title: "Realtime LISTEN/NOTIFY", Desc: "push order baru ke browser via SSE, trigger pg_notify"},
+	{Slug: "semantic", Title: "Vector Similarity (pgvector)", Desc: "produk mirip via embedding cosine distance, index HNSW"},
 }
 
 // RenderPage renders templates/<name>.html inside the shared layout.

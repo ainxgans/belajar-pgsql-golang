@@ -1,0 +1,56 @@
+{{define "content"}}
+<h1>Geospatial: Seller Terdekat</h1>
+<form id="nearby-form">
+  <input type="number" step="any" id="lat" placeholder="lat" required>
+  <input type="number" step="any" id="lng" placeholder="lng" required>
+  <input type="number" step="any" id="radius_km" placeholder="radius km" value="50">
+  <input type="number" id="limit" placeholder="limit" value="20">
+  <button type="button" id="use-location">Pakai lokasi saya</button>
+  <button type="submit">Cari</button>
+</form>
+<div id="results"></div>
+
+<script>
+const form = document.getElementById('nearby-form');
+const results = document.getElementById('results');
+
+document.getElementById('use-location').addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    alert('Geolocation tidak didukung browser ini.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      document.getElementById('lat').value = pos.coords.latitude;
+      document.getElementById('lng').value = pos.coords.longitude;
+    },
+    (err) => alert('Gagal ambil lokasi: ' + err.message)
+  );
+});
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const params = new URLSearchParams({
+    lat: document.getElementById('lat').value,
+    lng: document.getElementById('lng').value,
+    radius_km: document.getElementById('radius_km').value,
+    limit: document.getElementById('limit').value,
+  });
+
+  results.innerHTML = 'Loading…';
+  try {
+    const sellers = await fetchJSON(`/api/sellers/nearby?${params.toString()}`);
+    results.innerHTML = sellers.length
+      ? `<table>
+          <thead><tr><th>ID</th><th>Nama</th><th>Jarak (km)</th></tr></thead>
+          <tbody>${sellers.map(s => `
+            <tr><td>${s.id}</td><td>${s.name}</td><td>${s.km.toFixed(2)}</td></tr>
+          `).join('')}</tbody>
+        </table>`
+      : '<p>No results.</p>';
+  } catch (err) {
+    results.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+});
+</script>
+{{end}}
