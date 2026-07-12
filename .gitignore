@@ -1,0 +1,12 @@
+# Go build output
+/api
+/gen
+*.exe
+
+# Local env (berisi DATABASE_URL / kredensial)
+.env
+.env.local
+
+# Editor / OS
+.DS_Store
+*.swp
