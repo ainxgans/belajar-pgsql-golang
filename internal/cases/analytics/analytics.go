@@ -17,6 +17,59 @@ func RegisterRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 	mux.HandleFunc("GET /api/analytics/funnel", funnel(pool))
 	mux.HandleFunc("GET /api/analytics/rfm", rfm(pool))
 	mux.HandleFunc("GET /api/analytics/summary", summary(pool))
+	mux.HandleFunc("GET /api/analytics/categories", categories(pool))
+	mux.HandleFunc("POST /api/analytics/refresh", refresh(pool))
+}
+
+// refresh rebuilds mv_daily_revenue so new orders show up in the revenue report.
+// CONCURRENTLY needs the unique index on (day) from 0005_analytics.sql.
+func refresh(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := pool.Exec(r.Context(), "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_daily_revenue"); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		web.JSON(w, http.StatusOK, map[string]string{"status": "refreshed"})
+	}
+}
+
+type categoryNode struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	ParentID *int64 `json:"parent_id"`
+	Depth    int    `json:"depth"`
+	Path     string `json:"path"`
+}
+
+// categories walks the category tree via a recursive CTE (parent_id hierarchy).
+func categories(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rows, err := pool.Query(r.Context(), `
+			WITH RECURSIVE tree AS (
+				SELECT id, name, parent_id, 1 AS depth, name::text AS path
+				FROM categories WHERE parent_id IS NULL
+				UNION ALL
+				SELECT c.id, c.name, c.parent_id, t.depth + 1, t.path || ' > ' || c.name
+				FROM categories c JOIN tree t ON c.parent_id = t.id
+			)
+			SELECT id, name, parent_id, depth, path FROM tree ORDER BY path`)
+		if err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+
+		result := []categoryNode{}
+		for rows.Next() {
+			var n categoryNode
+			if err := rows.Scan(&n.ID, &n.Name, &n.ParentID, &n.Depth, &n.Path); err != nil {
+				web.Error(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			result = append(result, n)
+		}
+		web.JSON(w, http.StatusOK, result)
+	}
 }
 
 func parseDate(v string) (time.Time, error) {

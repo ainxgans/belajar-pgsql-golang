@@ -7,6 +7,7 @@
   <button type="button" class="tab-btn" data-tab="funnel">Funnel</button>
   <button type="button" class="tab-btn" data-tab="rfm">RFM</button>
   <button type="button" class="tab-btn" data-tab="summary">Summary</button>
+  <button type="button" class="tab-btn" data-tab="categories">Categories</button>
 </div>
 
 <section id="tab-revenue" class="tab-panel">
@@ -19,6 +20,7 @@
       <option value="month">month</option>
     </select>
     <button type="submit">Load</button>
+    <button type="button" id="revenue-refresh" title="REFRESH MATERIALIZED VIEW CONCURRENTLY">Refresh MV</button>
   </form>
   <canvas id="revenue-chart" width="640" height="160" style="border:1px solid #ddd; border-radius:6px; margin:0.5rem 0;"></canvas>
   <div id="revenue-results"></div>
@@ -50,6 +52,11 @@
   <div id="summary-results"></div>
 </section>
 
+<section id="tab-categories" class="tab-panel" style="display:none;">
+  <button type="button" id="categories-load">Load</button>
+  <div id="categories-results"></div>
+</section>
+
 <script>
 // --- tab switching (plain show/hide, no router) ---
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -58,6 +65,7 @@ const loaders = {
   'funnel': () => loadFunnel(),
   'rfm': () => loadRfm(),
   'summary': () => loadSummary(),
+  'categories': () => loadCategories(),
 };
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -215,6 +223,40 @@ async function loadSummary() {
 }
 
 // show first tab by default
+const refreshBtn = document.getElementById('revenue-refresh');
+refreshBtn.addEventListener('click', async () => {
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = 'Refreshing…';
+  try {
+    await postJSON('/api/analytics/refresh', {});
+    revenueForm.requestSubmit();
+  } catch (err) {
+    revenueResults.innerHTML = `<p class="error">${err.message}</p>`;
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = 'Refresh MV';
+  }
+});
+
+const categoriesResults = document.getElementById('categories-results');
+document.getElementById('categories-load').addEventListener('click', loadCategories);
+
+async function loadCategories() {
+  categoriesResults.innerHTML = 'Loading…';
+  try {
+    const rows = await fetchJSON('/api/analytics/categories');
+    const indented = (rows || []).map(r => ({ ...r, name: ' '.repeat((r.depth - 1) * 4) + r.name }));
+    categoriesResults.innerHTML = renderTable(indented, [
+      { key: 'id', label: 'ID' },
+      { key: 'name', label: 'Name' },
+      { key: 'depth', label: 'Depth' },
+      { key: 'path', label: 'Path' },
+    ]);
+  } catch (err) {
+    categoriesResults.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
 document.querySelector('.tab-btn[data-tab="revenue"]').classList.add('active');
 </script>
 {{end}}

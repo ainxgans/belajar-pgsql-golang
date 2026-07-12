@@ -93,12 +93,18 @@ func genUsers(ctx context.Context, pool *pgxpool.Pool, _ *rand.Rand, rows int) e
 }
 
 func genCategories(ctx context.Context, pool *pgxpool.Pool, _ *rand.Rand, rows int) error {
+	// First len(categoryNames) rows are roots (parent NULL); extras nest under their
+	// base category. Empty table + RESTART IDENTITY means row i gets id i+1, so a child
+	// can safely reference its already-inserted base at id (i%len)+1. // ponytail: 2-level tree, cukup buat recursive CTE demo
+	base := len(categoryNames)
 	return copyBatches(ctx, pool, TableCategories, []string{"name", "parent_id"}, rows, func(i int) []any {
-		name := categoryNames[i%len(categoryNames)]
-		if i >= len(categoryNames) {
-			name = fmt.Sprintf("%s %d", name, i/len(categoryNames)+1)
+		name := categoryNames[i%base]
+		var parentID any
+		if i >= base {
+			name = fmt.Sprintf("%s %d", name, i/base+1)
+			parentID = int64(i%base + 1)
 		}
-		return []any{name, nil}
+		return []any{name, parentID}
 	})
 }
 
