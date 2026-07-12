@@ -28,11 +28,6 @@ type similarProduct struct {
 
 func semanticSearch(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		productID, err := strconv.ParseInt(r.URL.Query().Get("product_id"), 10, 64)
-		if err != nil {
-			web.Error(w, http.StatusBadRequest, "product_id is required")
-			return
-		}
 		limit := 10
 		if v := r.URL.Query().Get("limit"); v != "" {
 			n, err := strconv.Atoi(v)
@@ -43,9 +38,29 @@ func semanticSearch(pool *pgxpool.Pool) http.HandlerFunc {
 			limit = n
 		}
 
-		rows, err := pool.Query(r.Context(), `
-			SELECT id, name, embedding <=> (SELECT embedding FROM products WHERE id = $1) AS dist
-			FROM products WHERE id <> $1 ORDER BY dist LIMIT $2`, productID, limit)
+		var query string
+		var arg any
+		if q := r.URL.Query().Get("q"); q != "" {
+			// ponytail: tanpa model embedding nyata; keyword → centroid (avg embedding) kategori yang namanya cocok
+			query = `
+				WITH cat AS (SELECT id FROM categories WHERE name ILIKE '%' || $1 || '%' ORDER BY id LIMIT 1),
+				     centroid AS (SELECT avg(embedding) AS e FROM products WHERE category_id = (SELECT id FROM cat))
+				SELECT id, name, embedding <=> (SELECT e FROM centroid) AS dist
+				FROM products WHERE (SELECT e FROM centroid) IS NOT NULL ORDER BY dist LIMIT $2`
+			arg = q
+		} else {
+			productID, err := strconv.ParseInt(r.URL.Query().Get("product_id"), 10, 64)
+			if err != nil {
+				web.Error(w, http.StatusBadRequest, "product_id or q is required")
+				return
+			}
+			query = `
+				SELECT id, name, embedding <=> (SELECT embedding FROM products WHERE id = $1) AS dist
+				FROM products WHERE id <> $1 ORDER BY dist LIMIT $2`
+			arg = productID
+		}
+
+		rows, err := pool.Query(r.Context(), query, arg, limit)
 		if err != nil {
 			web.Error(w, http.StatusInternalServerError, err.Error())
 			return

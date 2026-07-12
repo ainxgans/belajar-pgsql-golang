@@ -5,6 +5,10 @@
   <input type="number" id="limit" value="10" min="1" placeholder="limit">
   <button type="submit">Find similar</button>
 </form>
+<form id="keyword-form" style="margin-top:0.5rem;">
+  <input type="text" id="q" placeholder="kata kunci kategori, mis. 'electronics'">
+  <button type="submit">Search by keyword</button>
+</form>
 <div id="results"></div>
 
 <script>
@@ -20,14 +24,12 @@ const results = document.getElementById('results');
   }
 })();
 
-document.getElementById('search-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const productId = select.value;
+async function runSearch(params) {
   const limit = document.getElementById('limit').value || 10;
-
+  params.set('limit', limit);
   results.innerHTML = 'Loading…';
   try {
-    const similar = await fetchJSON(`/api/search/semantic?product_id=${encodeURIComponent(productId)}&limit=${encodeURIComponent(limit)}`);
+    const similar = await fetchJSON(`/api/search/semantic?${params.toString()}`);
     results.innerHTML = similar.length
       ? `<table>
           <thead><tr><th>id</th><th>name</th><th>dist</th></tr></thead>
@@ -39,6 +41,17 @@ document.getElementById('search-form').addEventListener('submit', async (e) => {
   } catch (err) {
     results.innerHTML = `<p class="error">${err.message}</p>`;
   }
+}
+
+document.getElementById('search-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  runSearch(new URLSearchParams({ product_id: select.value }));
+});
+
+document.getElementById('keyword-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim();
+  if (q) runSearch(new URLSearchParams({ q }));
 });
 </script>
 {{end}}
