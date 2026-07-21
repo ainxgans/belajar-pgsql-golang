@@ -119,6 +119,10 @@ func listOrders(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			orders = append(orders, o)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, orders)
 	}
 }

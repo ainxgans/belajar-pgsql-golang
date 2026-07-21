@@ -76,6 +76,10 @@ func semanticSearch(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			results = append(results, p)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, results)
 	}
 }
@@ -103,6 +107,10 @@ func listProducts(pool *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 			products = append(products, p)
+		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 		web.JSON(w, http.StatusOK, products)
 	}

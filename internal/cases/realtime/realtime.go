@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"pgsql-playground/internal/web"
@@ -51,28 +52,43 @@ func (h *hub) broadcast(payload string) {
 // "orders" channel for the lifetime of the process, fanning out every
 // NOTIFY payload to whatever SSE clients are currently registered.
 func listenOrders(ctx context.Context, pool *pgxpool.Pool, h *hub) {
-	conn, err := pool.Acquire(ctx)
-	if err != nil {
-		log.Printf("realtime: acquire listen conn: %v", err)
-		return
-	}
-	defer conn.Release()
-
-	if _, err := conn.Exec(ctx, "LISTEN orders"); err != nil {
-		log.Printf("realtime: LISTEN orders: %v", err)
-		return
-	}
-
 	for {
-		notification, err := conn.Conn().WaitForNotification(ctx)
+		if ctx.Err() != nil {
+			return
+		}
+		conn, err := pool.Acquire(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				return
 			}
-			log.Printf("realtime: wait for notification: %v", err)
-			return
+			log.Printf("realtime: acquire listen conn: %v", err)
+			time.Sleep(time.Second)
+			continue
 		}
-		h.broadcast(notification.Payload)
+
+		if _, err := conn.Exec(ctx, "LISTEN orders"); err != nil {
+			log.Printf("realtime: LISTEN orders: %v", err)
+			conn.Release()
+			if ctx.Err() != nil {
+				return
+			}
+			time.Sleep(time.Second)
+			continue
+		}
+
+		for {
+			notification, err := conn.Conn().WaitForNotification(ctx)
+			if err != nil {
+				conn.Release()
+				if ctx.Err() != nil {
+					return
+				}
+				log.Printf("realtime: wait for notification: %v", err)
+				time.Sleep(time.Second)
+				break
+			}
+			h.broadcast(notification.Payload)
+		}
 	}
 }
 

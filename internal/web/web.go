@@ -32,12 +32,27 @@ var Cases = []Case{
 	{Slug: "semantic", Title: "Vector Similarity (pgvector)", Desc: "produk mirip via embedding cosine distance, index HNSW"},
 }
 
+var parsedTemplates = map[string]*template.Template{}
+
+func init() {
+	names := []string{"index", "search", "products", "explain", "analytics", "nearby", "realtime", "semantic"}
+	for _, name := range names {
+		if tmpl, err := template.ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html"); err == nil {
+			parsedTemplates[name] = tmpl
+		}
+	}
+}
+
 // RenderPage renders templates/<name>.html inside the shared layout.
 func RenderPage(w http.ResponseWriter, name string, data any) {
-	tmpl, err := template.ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	tmpl, ok := parsedTemplates[name]
+	if !ok {
+		var err error
+		tmpl, err = template.ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

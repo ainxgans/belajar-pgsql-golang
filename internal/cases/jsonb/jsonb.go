@@ -86,6 +86,10 @@ func listProducts(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			products = append(products, p)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, products)
 	}
 }
@@ -124,6 +128,10 @@ func facets(pool *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 			result[key] = append(result[key], facetValue{Value: value, Count: count})
+		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 		web.JSON(w, http.StatusOK, result)
 	}

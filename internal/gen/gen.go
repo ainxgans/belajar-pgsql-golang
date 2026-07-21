@@ -119,15 +119,15 @@ func genSellers(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows in
 }
 
 func genProducts(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
-	sellerCount, err := tableCount(ctx, pool, TableSellers)
+	sellerIDs, err := tableIDs(ctx, pool, TableSellers)
 	if err != nil {
 		return err
 	}
-	categoryCount, err := tableCount(ctx, pool, TableCategories)
+	categoryIDs, err := tableIDs(ctx, pool, TableCategories)
 	if err != nil {
 		return err
 	}
-	if sellerCount == 0 || categoryCount == 0 {
+	if len(sellerIDs) == 0 || len(categoryIDs) == 0 {
 		return fmt.Errorf("gen: products needs sellers and categories generated first")
 	}
 
@@ -142,8 +142,8 @@ func genProducts(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows i
 			name := fmt.Sprintf("%s %s", adj, noun)
 			description := fmt.Sprintf("%s, %s.", name, desc)
 			price := float64(rnd.Intn(200_00)+1_00) / 100.0
-			sellerID := rnd.Int63n(sellerCount) + 1
-			categoryID := rnd.Int63n(categoryCount) + 1
+			sellerID := sellerIDs[rnd.Intn(len(sellerIDs))]
+			categoryID := categoryIDs[rnd.Intn(len(categoryIDs))]
 
 			attrs := map[string]any{"brand": brands[rnd.Intn(len(brands))]}
 			if categoryID%2 == 0 {
@@ -160,15 +160,15 @@ func genProducts(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows i
 }
 
 func genReviews(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
-	productCount, err := tableCount(ctx, pool, TableProducts)
+	productIDs, err := tableIDs(ctx, pool, TableProducts)
 	if err != nil {
 		return err
 	}
-	userCount, err := tableCount(ctx, pool, TableUsers)
+	userIDs, err := tableIDs(ctx, pool, TableUsers)
 	if err != nil {
 		return err
 	}
-	if productCount == 0 || userCount == 0 {
+	if len(productIDs) == 0 || len(userIDs) == 0 {
 		return fmt.Errorf("gen: reviews needs products and users generated first")
 	}
 
@@ -177,23 +177,23 @@ func genReviews(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows in
 		w2 := reviewWords[rnd.Intn(len(reviewWords))]
 		body := fmt.Sprintf("%s. %s.", w1, w2)
 		rating := rnd.Intn(5) + 1
-		productID := rnd.Int63n(productCount) + 1
-		userID := rnd.Int63n(userCount) + 1
+		productID := productIDs[rnd.Intn(len(productIDs))]
+		userID := userIDs[rnd.Intn(len(userIDs))]
 		return []any{productID, userID, body, rating}
 	})
 }
 
 func genOrders(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
-	userCount, err := tableCount(ctx, pool, TableUsers)
+	userIDs, err := tableIDs(ctx, pool, TableUsers)
 	if err != nil {
 		return err
 	}
-	if userCount == 0 {
+	if len(userIDs) == 0 {
 		return fmt.Errorf("gen: orders needs users generated first")
 	}
 
 	return copyBatches(ctx, pool, TableOrders, []string{"user_id", "status", "total", "created_at"}, rows, func(i int) []any {
-		userID := rnd.Int63n(userCount) + 1
+		userID := userIDs[rnd.Intn(len(userIDs))]
 		status := orderStatuses[rnd.Intn(len(orderStatuses))]
 		total := float64(rnd.Intn(500_00)+5_00) / 100.0
 		createdAt := dateSpread(rnd, 24) // stays within the 24-months-back partition range
@@ -202,21 +202,21 @@ func genOrders(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int
 }
 
 func genOrderItems(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
-	orderCount, err := tableCount(ctx, pool, TableOrders)
+	orderIDs, err := tableIDs(ctx, pool, TableOrders)
 	if err != nil {
 		return err
 	}
-	productCount, err := tableCount(ctx, pool, TableProducts)
+	productIDs, err := tableIDs(ctx, pool, TableProducts)
 	if err != nil {
 		return err
 	}
-	if orderCount == 0 || productCount == 0 {
+	if len(orderIDs) == 0 || len(productIDs) == 0 {
 		return fmt.Errorf("gen: order_items needs orders and products generated first")
 	}
 
 	return copyBatches(ctx, pool, TableOrderItems, []string{"order_id", "product_id", "qty", "price"}, rows, func(i int) []any {
-		orderID := rnd.Int63n(orderCount) + 1
-		productID := rnd.Int63n(productCount) + 1
+		orderID := orderIDs[rnd.Intn(len(orderIDs))]
+		productID := productIDs[rnd.Intn(len(productIDs))]
 		qty := rnd.Intn(5) + 1
 		price := float64(rnd.Intn(200_00)+1_00) / 100.0
 		return []any{orderID, productID, qty, price}
@@ -224,20 +224,20 @@ func genOrderItems(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows
 }
 
 func genEvents(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int) error {
-	userCount, err := tableCount(ctx, pool, TableUsers)
+	userIDs, err := tableIDs(ctx, pool, TableUsers)
 	if err != nil {
 		return err
 	}
-	productCount, err := tableCount(ctx, pool, TableProducts)
+	productIDs, err := tableIDs(ctx, pool, TableProducts)
 	if err != nil {
 		return err
 	}
-	if userCount == 0 || productCount == 0 {
+	if len(userIDs) == 0 || len(productIDs) == 0 {
 		return fmt.Errorf("gen: events needs users and products generated first")
 	}
 
 	return copyBatches(ctx, pool, TableEvents, []string{"user_id", "product_id", "kind", "created_at"}, rows, func(i int) []any {
-		userID := rnd.Int63n(userCount) + 1
+		userID := userIDs[rnd.Intn(len(userIDs))]
 
 		var kind string
 		switch roll := rnd.Intn(10); {
@@ -251,7 +251,7 @@ func genEvents(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, rows int
 
 		var productID any
 		if rnd.Intn(10) != 0 {
-			productID = rnd.Int63n(productCount) + 1
+			productID = productIDs[rnd.Intn(len(productIDs))]
 		}
 
 		createdAt := dateSpread(rnd, 26)
@@ -336,24 +336,52 @@ func genEmbeddings(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand) erro
 	}
 
 	batch := &pgx.Batch{}
+	queuedCount := 0
 	for _, p := range products {
-		centroid := centroids[p.categoryID]
+		centroid, ok := centroids[p.categoryID]
+		if !ok {
+			continue
+		}
 		emb := make([]float64, embeddingDim)
 		for i := range emb {
 			emb[i] = centroid[i] + rnd.NormFloat64()*0.15
 		}
 		normalize(emb)
 		batch.Queue("UPDATE products SET embedding = $1::vector WHERE id = $2", vectorLiteral(emb), p.id)
+		queuedCount++
+	}
+	if queuedCount == 0 {
+		return nil
 	}
 	br := pool.SendBatch(ctx, batch)
 	defer br.Close()
-	for range products {
+	for i := 0; i < queuedCount; i++ {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("gen: embeddings: update: %w", err)
 		}
 	}
-	fmt.Printf("gen: embeddings +%d products\n", len(products))
+	fmt.Printf("gen: embeddings +%d products\n", queuedCount)
 	return nil
+}
+
+func tableIDs(ctx context.Context, pool *pgxpool.Pool, table string) ([]int64, error) {
+	rows, err := pool.Query(ctx, fmt.Sprintf("SELECT id FROM %s", table))
+	if err != nil {
+		return nil, fmt.Errorf("gen: query ids %s: %w", table, err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("gen: scan id %s: %w", table, err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("gen: ids %s: %w", table, err)
+	}
+	return ids, nil
 }
 
 func tableCount(ctx context.Context, pool *pgxpool.Pool, table string) (int64, error) {

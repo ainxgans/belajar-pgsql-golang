@@ -77,6 +77,10 @@ func nearby(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			sellers = append(sellers, s)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, sellers)
 	}
 }

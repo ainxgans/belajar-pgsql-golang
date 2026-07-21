@@ -68,6 +68,10 @@ func categories(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			result = append(result, n)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, result)
 	}
 }
@@ -142,6 +146,10 @@ func revenue(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			points = append(points, p)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, points)
 	}
 }
@@ -208,6 +216,10 @@ func topProducts(pool *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 			products = append(products, p)
+		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 		web.JSON(w, http.StatusOK, products)
 	}
@@ -279,6 +291,10 @@ func rfm(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			result = append(result, row)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, result)
 	}
 }
@@ -310,6 +326,10 @@ func summary(pool *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 			result = append(result, row)
+		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 		web.JSON(w, http.StatusOK, result)
 	}

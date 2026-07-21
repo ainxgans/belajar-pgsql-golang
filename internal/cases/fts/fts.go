@@ -65,6 +65,10 @@ func search(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			hits = append(hits, h)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, hits)
 	}
 }
@@ -97,6 +101,10 @@ func searchFuzzy(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 			hits = append(hits, h)
 		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		web.JSON(w, http.StatusOK, hits)
 	}
 }
@@ -128,6 +136,10 @@ func autocomplete(pool *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 			hits = append(hits, h)
+		}
+		if err := rows.Err(); err != nil {
+			web.Error(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 		web.JSON(w, http.StatusOK, hits)
 	}
