@@ -80,7 +80,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 	mux.Handle("GET /static/", http.FileServerFS(web.StaticFS))
 	mux.HandleFunc("GET /{$}", web.IndexHandler)

@@ -122,7 +122,7 @@ func stream(h *hub) http.HandlerFunc {
 			case <-r.Context().Done():
 				return
 			case payload := <-ch:
-				fmt.Fprintf(w, "data: %s\n\n", payload)
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", payload)
 				flusher.Flush()
 			}
 		}

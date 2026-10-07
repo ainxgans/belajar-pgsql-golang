@@ -354,7 +354,7 @@ func genEmbeddings(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand) erro
 		return nil
 	}
 	br := pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() { _ = br.Close() }()
 	for i := 0; i < queuedCount; i++ {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("gen: embeddings: update: %w", err)
@@ -382,13 +382,4 @@ func tableIDs(ctx context.Context, pool *pgxpool.Pool, table string) ([]int64, e
 		return nil, fmt.Errorf("gen: ids %s: %w", table, err)
 	}
 	return ids, nil
-}
-
-func tableCount(ctx context.Context, pool *pgxpool.Pool, table string) (int64, error) {
-	var count int64
-	err := pool.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM %s", table)).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("gen: count %s: %w", table, err)
-	}
-	return count, nil
 }
