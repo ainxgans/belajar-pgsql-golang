@@ -106,7 +106,7 @@ revenueForm.addEventListener('submit', async (e) => {
 
   revenueResults.innerHTML = 'Loading…';
   try {
-    const rows = await fetchJSON(`/api/analytics/revenue?${params.toString()}`);
+    const rows = await fetchJSON(`api/analytics/revenue?${params.toString()}`);
     revenueResults.innerHTML = renderTable(rows, [
       { key: 'bucket', label: 'Bucket' },
       { key: 'orders', label: 'Orders' },
@@ -144,7 +144,7 @@ topProductsForm.addEventListener('submit', async (e) => {
 
   topProductsResults.innerHTML = 'Loading…';
   try {
-    const rows = await fetchJSON(`/api/analytics/top-products?${params.toString()}`);
+    const rows = await fetchJSON(`api/analytics/top-products?${params.toString()}`);
     topProductsResults.innerHTML = renderTable(rows, [
       { key: 'category_name', label: 'Category' },
       { key: 'rank', label: 'Rank' },
@@ -163,7 +163,7 @@ document.getElementById('funnel-load').addEventListener('click', loadFunnel);
 async function loadFunnel() {
   funnelResults.innerHTML = 'Loading…';
   try {
-    const data = await fetchJSON('/api/analytics/funnel');
+    const data = await fetchJSON('api/analytics/funnel');
     const stats = [
       { label: 'Views', value: data.views },
       { label: 'Carts', value: data.carts },
@@ -187,7 +187,7 @@ document.getElementById('rfm-load').addEventListener('click', loadRfm);
 async function loadRfm() {
   rfmResults.innerHTML = 'Loading…';
   try {
-    let rows = await fetchJSON('/api/analytics/rfm');
+    let rows = await fetchJSON('api/analytics/rfm');
     if (Array.isArray(rows) && rows.length > 100) rows = rows.slice(0, 100); // ponytail: defensive cap, cheap client-side truncation
     rfmResults.innerHTML = renderTable(rows, [
       { key: 'user_id', label: 'User' },
@@ -210,7 +210,7 @@ document.getElementById('summary-load').addEventListener('click', loadSummary);
 async function loadSummary() {
   summaryResults.innerHTML = 'Loading…';
   try {
-    const rows = await fetchJSON('/api/analytics/summary');
+    const rows = await fetchJSON('api/analytics/summary');
     const mapped = (rows || []).map(r => ({ ...r, status: r.status ?? 'TOTAL' }));
     summaryResults.innerHTML = renderTable(mapped, [
       { key: 'status', label: 'Status' },
@@ -228,7 +228,7 @@ refreshBtn.addEventListener('click', async () => {
   refreshBtn.disabled = true;
   refreshBtn.textContent = 'Refreshing…';
   try {
-    await postJSON('/api/analytics/refresh', {});
+    await postJSON('api/analytics/refresh', {});
     revenueForm.requestSubmit();
   } catch (err) {
     revenueResults.innerHTML = `<p class="error">${err.message}</p>`;
@@ -244,7 +244,7 @@ document.getElementById('categories-load').addEventListener('click', loadCategor
 async function loadCategories() {
   categoriesResults.innerHTML = 'Loading…';
   try {
-    const rows = await fetchJSON('/api/analytics/categories');
+    const rows = await fetchJSON('api/analytics/categories');
     const indented = (rows || []).map(r => ({ ...r, name: ' '.repeat((r.depth - 1) * 4) + r.name }));
     categoriesResults.innerHTML = renderTable(indented, [
       { key: 'id', label: 'ID' },

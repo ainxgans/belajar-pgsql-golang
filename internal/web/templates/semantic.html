@@ -17,7 +17,7 @@ const results = document.getElementById('results');
 
 (async () => {
   try {
-    const products = await fetchJSON('/api/products/list');
+    const products = await fetchJSON('api/products/list');
     select.innerHTML = products.map(p => `<option value="${p.id}">${p.name} (id ${p.id})</option>`).join('');
   } catch (err) {
     select.innerHTML = '<option>failed to load products</option>';
@@ -29,7 +29,7 @@ async function runSearch(params) {
   params.set('limit', limit);
   results.innerHTML = 'Loading…';
   try {
-    const similar = await fetchJSON(`/api/search/semantic?${params.toString()}`);
+    const similar = await fetchJSON(`api/search/semantic?${params.toString()}`);
     results.innerHTML = similar.length
       ? `<table>
           <thead><tr><th>id</th><th>name</th><th>dist</th></tr></thead>

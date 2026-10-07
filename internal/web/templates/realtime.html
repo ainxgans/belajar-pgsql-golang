@@ -9,7 +9,7 @@
 const list = document.getElementById('orders');
 const sent = document.getElementById('sent');
 
-const events = new EventSource('/api/events/stream');
+const events = new EventSource('api/events/stream');
 events.onmessage = (e) => {
   const order = JSON.parse(e.data);
   const li = document.createElement('li');
@@ -21,7 +21,7 @@ events.onmessage = (e) => {
 document.getElementById('simulate').addEventListener('click', async () => {
   sent.textContent = '';
   try {
-    await postJSON('/api/orders/simulate', {});
+    await postJSON('api/orders/simulate', {});
     sent.textContent = 'sent';
     setTimeout(() => { sent.textContent = ''; }, 1500);
   } catch (err) {

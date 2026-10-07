@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,9 +20,15 @@ func Connect(ctx context.Context) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("db: connect: %w", err)
 	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("db: ping: %w", err)
+	var pingErr error
+	for i := 0; i < 30; i++ {
+		if err := pool.Ping(ctx); err == nil {
+			return pool, nil
+		} else {
+			pingErr = err
+			time.Sleep(1 * time.Second)
+		}
 	}
-	return pool, nil
+	pool.Close()
+	return nil, fmt.Errorf("db: ping: %w", pingErr)
 }

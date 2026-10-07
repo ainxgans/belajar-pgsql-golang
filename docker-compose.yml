@@ -1,14 +1,18 @@
 services:
-  db:
-    image: pgvector/pgvector:pg17
+  app:
+    build: .
+    container_name: belajar-pgsql-golang-app
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: playground
+      DATABASE_URL: ${DATABASE_URL:-postgres://app:app@reusable-postgres:5432/playground?sslmode=disable}
+      ADDR: ${ADDR:-:8080}
+      BASE_PATH: ${BASE_PATH:-/belajar-pgsql-golang}
+      AUTO_SEED: ${AUTO_SEED:-true}
     ports:
-      - "5434:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
+      - "127.0.0.1:8080:8080"
+    networks:
+      - reusable-network
 
-volumes:
-  db_data:
+networks:
+  reusable-network:
+    external: true

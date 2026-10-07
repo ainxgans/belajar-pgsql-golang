@@ -39,7 +39,7 @@ form.addEventListener('submit', async (e) => {
 
   results.innerHTML = 'Loading…';
   try {
-    const sellers = await fetchJSON(`/api/sellers/nearby?${params.toString()}`);
+    const sellers = await fetchJSON(`api/sellers/nearby?${params.toString()}`);
     results.innerHTML = sellers.length
       ? `<table>
           <thead><tr><th>ID</th><th>Nama</th><th>Jarak (km)</th></tr></thead>

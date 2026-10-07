@@ -32,6 +32,15 @@ var Cases = []Case{
 	{Slug: "semantic", Title: "Vector Similarity (pgvector)", Desc: "produk mirip via embedding cosine distance, index HNSW"},
 }
 
+// BasePath is prepended to assets and links when running behind a path prefix (e.g. "/belajar-pgsql-golang").
+var BasePath = ""
+
+// PageData wraps the template data along with the active BasePath.
+type PageData struct {
+	BasePath string
+	Data     any
+}
+
 var parsedTemplates = map[string]*template.Template{}
 
 func init() {
@@ -54,7 +63,7 @@ func RenderPage(w http.ResponseWriter, name string, data any) {
 			return
 		}
 	}
-	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+	if err := tmpl.ExecuteTemplate(w, "layout", PageData{BasePath: BasePath, Data: data}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

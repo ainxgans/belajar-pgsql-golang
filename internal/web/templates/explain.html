@@ -15,7 +15,7 @@ form.addEventListener('submit', async (e) => {
   const sql = document.getElementById('sql').value;
   plan.textContent = 'Running…';
   try {
-    const result = await postJSON('/api/explain', { sql });
+    const result = await postJSON('api/explain', { sql });
     plan.textContent = JSON.stringify(result, null, 2);
   } catch (err) {
     plan.textContent = 'Error: ' + err.message;

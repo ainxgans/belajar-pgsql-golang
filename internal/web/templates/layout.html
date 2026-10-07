@@ -5,12 +5,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>pgsql-playground</title>
-  <link rel="stylesheet" href="/static/style.css">
+  {{if .BasePath}}<base href="{{.BasePath}}/">{{else}}<base href="/">{{end}}
+  <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
-  <header><a href="/">pgsql-playground</a></header>
-  <main>{{template "content" .}}</main>
-  <script src="/static/app.js"></script>
+  <header><a href="./">pgsql-playground</a></header>
+  <main>{{template "content" .Data}}</main>
+  <script src="static/app.js"></script>
 </body>
 </html>
 {{end}}

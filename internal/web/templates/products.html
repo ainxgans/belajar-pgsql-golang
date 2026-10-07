@@ -34,7 +34,7 @@ form.addEventListener('submit', async (e) => {
 
   results.innerHTML = 'Loading…';
   try {
-    const products = await fetchJSON(`/api/products?${params.toString()}`);
+    const products = await fetchJSON(`api/products?${params.toString()}`);
     results.innerHTML = products.length
       ? products.map(p => `
           <div class="result">
@@ -50,7 +50,7 @@ form.addEventListener('submit', async (e) => {
   facetsEl.innerHTML = '';
   if (categoryId) {
     try {
-      const facetData = await fetchJSON(`/api/products/facets?category_id=${encodeURIComponent(categoryId)}`);
+      const facetData = await fetchJSON(`api/products/facets?category_id=${encodeURIComponent(categoryId)}`);
       facetsEl.innerHTML = Object.entries(facetData).map(([key, values]) => `
         <h3>${key}</h3>
         <ul>${values.map(v => `<li>${v.value}: ${v.count}</li>`).join('')}</ul>

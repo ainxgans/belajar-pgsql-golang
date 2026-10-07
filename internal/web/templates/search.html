@@ -21,7 +21,7 @@ form.addEventListener('submit', async (e) => {
   if (!q) return;
   results.innerHTML = 'Loading…';
   try {
-    const path = mode === 'fuzzy' ? '/api/search/fuzzy' : '/api/search';
+    const path = mode === 'fuzzy' ? 'api/search/fuzzy' : 'api/search';
     const hits = await fetchJSON(`${path}?q=${encodeURIComponent(q)}`);
     if (!hits.length) {
       results.innerHTML = '<p>No results.</p>';
