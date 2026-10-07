@@ -49,6 +49,11 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      - name: Seed database for tests
+        env:
+          DATABASE_URL: postgres://app:app@localhost:5432/playground?sslmode=disable
+        run: go run ./cmd/gen -table all
+
       - name: Run Tests
         env:
           DATABASE_URL: postgres://app:app@localhost:5432/playground?sslmode=disable

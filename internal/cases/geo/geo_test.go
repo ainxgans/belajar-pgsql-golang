@@ -2,11 +2,13 @@ package geo
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"pgsql-playground/internal/db"
+	"pgsql-playground/internal/gen"
 )
 
 func TestNearbyOrderedByKm(t *testing.T) {
@@ -18,6 +20,15 @@ func TestNearbyOrderedByKm(t *testing.T) {
 	defer pool.Close()
 	if err := db.Migrate(ctx, pool); err != nil {
 		t.Fatalf("migrate: %v", err)
+	}
+
+	var count int
+	_ = pool.QueryRow(ctx, "SELECT count(*) FROM sellers").Scan(&count)
+	if count == 0 {
+		rnd := rand.New(rand.NewSource(1))
+		if err := gen.Generate(ctx, pool, rnd, gen.TableSellers, 50, false); err != nil {
+			t.Fatalf("seed sellers: %v", err)
+		}
 	}
 
 	// Jakarta cluster (see internal/gen/words.go cityCoords).

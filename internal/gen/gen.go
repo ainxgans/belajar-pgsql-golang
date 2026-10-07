@@ -70,6 +70,29 @@ func Generate(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand, table str
 	}
 }
 
+// SeedAll seeds standard demo/test datasets across all playground tables.
+func SeedAll(ctx context.Context, pool *pgxpool.Pool, rnd *rand.Rand) error {
+	steps := []struct {
+		table string
+		rows  int
+	}{
+		{TableUsers, 200},
+		{TableCategories, 20},
+		{TableSellers, 50},
+		{TableProducts, 300},
+		{TableOrders, 500},
+		{TableOrderItems, 1500},
+		{TableEvents, 2000},
+		{TableEmbeddings, 0},
+	}
+	for _, s := range steps {
+		if err := Generate(ctx, pool, rnd, s.table, s.rows, false); err != nil {
+			return fmt.Errorf("seed %s: %w", s.table, err)
+		}
+	}
+	return nil
+}
+
 func copyBatches(ctx context.Context, pool *pgxpool.Pool, table string, columns []string, rows int, build func(i int) []any) error {
 	for start := 0; start < rows; start += batchSize {
 		end := min(start+batchSize, rows)

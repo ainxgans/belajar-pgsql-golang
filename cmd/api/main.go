@@ -39,29 +39,8 @@ func main() {
 		if count == 0 {
 			log.Println("api: seeding database tables...")
 			rnd := rand.New(rand.NewSource(1))
-			if err := gen.Generate(ctx, pool, rnd, gen.TableUsers, 200, false); err != nil {
-				log.Printf("api seed users err: %v", err)
-			}
-			if err := gen.Generate(ctx, pool, rnd, gen.TableCategories, 20, false); err != nil {
-				log.Printf("api seed categories err: %v", err)
-			}
-			if err := gen.Generate(ctx, pool, rnd, gen.TableSellers, 50, false); err != nil {
-				log.Printf("api seed sellers err: %v", err)
-			}
-			if err := gen.Generate(ctx, pool, rnd, gen.TableProducts, 300, false); err != nil {
-				log.Printf("api seed products err: %v", err)
-			}
-			if err := gen.Generate(ctx, pool, rnd, gen.TableOrders, 500, false); err != nil {
-				log.Printf("api seed orders err: %v", err)
-			}
-			if err := gen.Generate(ctx, pool, rnd, gen.TableOrderItems, 1500, false); err != nil {
-				log.Printf("api seed order_items err: %v", err)
-			}
-			if err := gen.Generate(ctx, pool, rnd, gen.TableEvents, 2000, false); err != nil {
-				log.Printf("api seed events err: %v", err)
-			}
-			if err := gen.Generate(ctx, pool, rnd, gen.TableEmbeddings, 0, false); err != nil {
-				log.Printf("api seed embeddings err: %v", err)
+			if err := gen.SeedAll(ctx, pool, rnd); err != nil {
+				log.Printf("api seed err: %v", err)
 			}
 			log.Println("api: database seeding completed")
 		}

@@ -2,10 +2,12 @@ package vector
 
 import (
 	"encoding/json"
+	"math/rand"
 	"net/http/httptest"
 	"testing"
 
 	"pgsql-playground/internal/db"
+	"pgsql-playground/internal/gen"
 )
 
 // TestSemanticSearchMajoritySameCategory checks the plan's acceptance
@@ -25,7 +27,14 @@ func TestSemanticSearchMajoritySameCategory(t *testing.T) {
 	const sourceID = 1
 	var categoryID int64
 	if err := pool.QueryRow(ctx, "SELECT category_id FROM products WHERE id = $1", sourceID).Scan(&categoryID); err != nil {
-		t.Skipf("product %d not available: %v", sourceID, err)
+		rnd := rand.New(rand.NewSource(1))
+		_ = gen.Generate(ctx, pool, rnd, gen.TableCategories, 20, false)
+		_ = gen.Generate(ctx, pool, rnd, gen.TableSellers, 50, false)
+		_ = gen.Generate(ctx, pool, rnd, gen.TableProducts, 300, false)
+		_ = gen.Generate(ctx, pool, rnd, gen.TableEmbeddings, 0, false)
+		if err := pool.QueryRow(ctx, "SELECT category_id FROM products WHERE id = $1", sourceID).Scan(&categoryID); err != nil {
+			t.Skipf("product %d not available: %v", sourceID, err)
+		}
 	}
 
 	req := httptest.NewRequest("GET", "/api/search/semantic?product_id=1&limit=5", nil)

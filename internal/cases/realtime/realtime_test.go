@@ -31,11 +31,23 @@ func TestNotifyOrderDeliversWithinOneSecond(t *testing.T) {
 		t.Fatalf("listen: %v", err)
 	}
 
+	var userID int64
+	err = pool.QueryRow(ctx, `
+		INSERT INTO users (email, name, created_at)
+		VALUES ('test-realtime@example.com', 'Test User', now())
+		ON CONFLICT DO NOTHING
+		RETURNING id`).Scan(&userID)
+	if err != nil {
+		if err := pool.QueryRow(ctx, "SELECT id FROM users LIMIT 1").Scan(&userID); err != nil {
+			t.Fatalf("no user available: %v", err)
+		}
+	}
+
 	var orderID int64
 	err = pool.QueryRow(ctx, `
 		INSERT INTO orders (user_id, status, total, created_at)
-		VALUES ((SELECT id FROM users ORDER BY random() LIMIT 1), 'pending', 42.00, now())
-		RETURNING id`).Scan(&orderID)
+		VALUES ($1, 'pending', 42.00, now())
+		RETURNING id`, userID).Scan(&orderID)
 	if err != nil {
 		t.Fatalf("insert order: %v", err)
 	}
